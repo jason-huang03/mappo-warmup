@@ -31,7 +31,7 @@ class MPERunner(Runner):
                 obs, rewards, dones, infos = self.envs.step(actions_env)
 
                 data = obs, rewards, dones, infos, values, actions, action_log_probs, rnn_states, rnn_states_critic
-
+                breakpoint()
                 # insert data into buffer
                 self.insert(data)
 

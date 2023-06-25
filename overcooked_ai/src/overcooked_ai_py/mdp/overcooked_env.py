@@ -90,7 +90,8 @@ class OvercookedEnv(object):
     def mlam(self):
         if self._mlam is None:
             if self.info_level > 0:
-                print("Computing MediumLevelActionManager")
+                # print("Computing MediumLevelActionManager")
+                pass
             self._mlam = MediumLevelActionManager.from_pickle_or_compute(
                 self.mdp, self.mlam_params, force_compute=False
             )
@@ -240,7 +241,7 @@ class OvercookedEnv(object):
     ###################
 
     def step(
-        self, joint_action, joint_agent_action_info=None, display_phi=False
+        self, joint_action, joint_agent_action_info=None, display_phi=False,sparse_reward=True
     ):
         """Performs a joint action, updating the environment state
         and providing a reward.
@@ -269,7 +270,13 @@ class OvercookedEnv(object):
             self._add_episode_info(env_info)
 
         timestep_sparse_reward = sum(mdp_infos["sparse_reward_by_agent"])
-        return (next_state, timestep_sparse_reward, done, env_info)
+        timestep_shaped_reward = sum(mdp_infos["shaped_reward_by_agent"])
+
+        if sparse_reward:
+            rewards = timestep_sparse_reward
+        else:
+            rewards = timestep_shaped_reward
+        return (next_state, rewards, done, env_info)
 
     def lossless_state_encoding_mdp(self, state):
         """
@@ -830,13 +837,14 @@ class Overcooked(gym.Env):
             np.random.seed(seed)
 
         self.num_agents = 2
+        self._use_sparse_reward = True
 
         self.base_env = base_env
         self.featurize_fn = featurize_fn
         self.observation_space = [self._setup_observation_space() for _ in range(self.num_agents)]
         self.action_space = [gym.spaces.Discrete(len(Action.ALL_ACTIONS)) for _ in range(self.num_agents)]
 
-        self.share_observation_space = self.observation_space
+        self.share_observation_space = [self._setup_share_observation_space() for _ in range(self.num_agents)]
 
         self.reset()
 
@@ -848,6 +856,18 @@ class Overcooked(gym.Env):
         low = np.zeros(obs_shape)
         return gym.spaces.Box(low, high, dtype=np.float32)
 
+    def _setup_share_observation_space(self):
+        dummy_mdp = self.base_env.mdp
+        dummy_state = dummy_mdp.get_standard_start_state()
+        obs_shape = self.featurize_fn(dummy_state)[0].shape
+        share_obs_shape = tuple(value * 2 for value in obs_shape)
+        
+        high = np.ones(share_obs_shape) * float("inf")
+        low = np.zeros(share_obs_shape)
+        return gym.spaces.Box(low, high, dtype=np.float32)
+     
+
+
     def step(self, action):
         """
         action:
@@ -858,13 +878,13 @@ class Overcooked(gym.Env):
             observation: formatted to be standard input for self.agent_idx's policy
         """
         assert all(
-            self.action_space[0].contains(a) for a in action
+            self.action_space[0].contains(a.item()) for a in action
         ), "%r (%s) invalid" % (
             action,
             type(action),
         )
         agent_action, other_agent_action = [
-            Action.INDEX_TO_ACTION[a] for a in action
+            Action.INDEX_TO_ACTION[a.item()] for a in action
         ]
 
         # if self.agent_idx == 0:
@@ -874,8 +894,19 @@ class Overcooked(gym.Env):
 
         joint_action = (agent_action, other_agent_action)
 
-        next_state, reward, done, env_info = self.base_env.step(joint_action)
+        next_state, reward,  done, env_info = self.base_env.step(joint_action, sparse_reward=self._use_sparse_reward)
+        # reward here is an integer
+
+        rewards = np.array([[reward], [reward]], dtype=np.float32)
+  
+
         ob_p0, ob_p1 = self.featurize_fn(next_state)
+
+        ## stack the two observations together
+        obs = np.stack((ob_p0, ob_p1), axis=0)
+
+        # make dones into np.ndarray
+        dones = np.array([done, done])
 
         # if self.agent_idx == 0:
         #     both_agents_ob = (ob_p0, ob_p1)
@@ -892,7 +923,7 @@ class Overcooked(gym.Env):
         #     "overcooked_state": next_state,
         #     "other_agent_env_idx": 1 - self.agent_idx,
         # }
-        return [ob_p0, ob_p1], [reward, reward], [done, done], [{}, {}]
+        return obs, rewards, dones, [{}, {}]
 
     def reset(self):
         """
@@ -906,9 +937,14 @@ class Overcooked(gym.Env):
         self.base_env.reset()
         self.mdp = self.base_env.mdp
         self.agent_idx = np.random.choice([0, 1])
+        self._use_sparse_reward = True
+
         ob_p0, ob_p1 = self.featurize_fn(self.base_env.state)
 
         state = self.base_env.state
+
+        # stack observations together, creating a new dimension
+        obs = np.stack((ob_p0, ob_p1), axis=0)
 
         # if self.agent_idx == 0:
         #     both_agents_ob = (ob_p0, ob_p1)
@@ -920,7 +956,20 @@ class Overcooked(gym.Env):
         #     "other_agent_env_idx": 1 - self.agent_idx,
         # }
 
-        return [ob_p0, ob_p1]
+        return obs
+    
+    @property
+    def use_sparse_reward(self):
+        return self._use_sparse_reward
+    
+    @use_sparse_reward.setter
+    def use_sparse_reward(self, value):
+        assert isinstance(value, bool), "use_sparse_reward must be a boolean"
+
+        self._use_sparse_reward = value
 
     def render(self, mode="human", close=False):
+        pass
+
+    def close(self):
         pass
