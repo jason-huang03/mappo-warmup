@@ -241,7 +241,7 @@ class OvercookedEnv(object):
     ###################
 
     def step(
-        self, joint_action, joint_agent_action_info=None, display_phi=False,sparse_reward=True
+        self, joint_action, joint_agent_action_info=None, display_phi=False,sparse_reward=True, reduced_coefficient=1.0
     ):
         """Performs a joint action, updating the environment state
         and providing a reward.
@@ -275,7 +275,7 @@ class OvercookedEnv(object):
         if sparse_reward:
             rewards = timestep_sparse_reward
         else:
-            rewards = timestep_shaped_reward
+            rewards = timestep_shaped_reward * reduced_coefficient + timestep_sparse_reward
         return (next_state, rewards, done, env_info)
 
     def lossless_state_encoding_mdp(self, state):
@@ -810,7 +810,7 @@ class Overcooked(gym.Env):
     # gym checks for the action space and obs space while initializing the env and throws an error if none exists
     # custom_init after __init__ no longer works
     # might as well move all the initilization into the actual __init__
-    def __init__(self, base_env, featurize_fn, baselines_reproducible=False, seed=None):
+    def __init__(self, base_env, featurize_fn, baselines_reproducible=False, seed=None, use_sparse_reward=True, shaped_reward_horizon=100*400):
         """
         base_env: OvercookedEnv
         featurize_fn(mdp, state): fn used to featurize states returned in the 'both_agent_obs' field
@@ -837,7 +837,9 @@ class Overcooked(gym.Env):
             np.random.seed(seed)
 
         self.num_agents = 2
-        self._use_sparse_reward = True
+        self._use_sparse_reward = use_sparse_reward
+        self._shaped_reward_horizon = shaped_reward_horizon
+        self._time_line = 1
 
         self.base_env = base_env
         self.featurize_fn = featurize_fn
@@ -894,7 +896,9 @@ class Overcooked(gym.Env):
 
         joint_action = (agent_action, other_agent_action)
 
-        next_state, reward,  done, env_info = self.base_env.step(joint_action, sparse_reward=self._use_sparse_reward)
+        reduced_coefficient = 0 if self._time_line > self._shaped_reward_horizon else (self._shaped_reward_horizon - self._time_line) / self._shaped_reward_horizon
+        next_state, reward,  done, env_info = self.base_env.step(joint_action, sparse_reward=self._use_sparse_reward, reduced_coefficient=reduced_coefficient)
+        self._time_line += 1
         # reward here is an integer
 
         rewards = np.array([[reward], [reward]], dtype=np.float32)
@@ -937,7 +941,7 @@ class Overcooked(gym.Env):
         self.base_env.reset()
         self.mdp = self.base_env.mdp
         self.agent_idx = np.random.choice([0, 1])
-        self._use_sparse_reward = True
+       
 
         ob_p0, ob_p1 = self.featurize_fn(self.base_env.state)
 

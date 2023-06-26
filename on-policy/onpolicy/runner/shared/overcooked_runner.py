@@ -32,28 +32,29 @@ class OvercookedRunner(Runner):
             
            
             
+
             pbar = tqdm(range(self.episode_length))
             total_reward = 0
-            soup_delivered = 0
             for step in range(self.episode_length):
                 
 
                 # sample actions
-                values, actions, action_log_probs, rnn_states, rnn_states_critic, actions_env = self.collect(step)
+                values, actions, action_log_probs, rnn_states, rnn_states_critic= self.collect(step)
                 
                 # observe reward and next obs
                 obs, rewards, dones, infos = self.envs.step(actions)
 
                 data = obs, rewards, dones, infos, values, actions, action_log_probs, rnn_states, rnn_states_critic
                 
-                total_reward += int(rewards[0][0][0])
+                total_reward += (rewards[0][0][0])
 
+               
          
                 self.insert(data)
                 pbar.update(1)
               
 
-                pbar.set_description("Total Episode {}".format(episodes) + " | Episode {}".format(episode) +  " | Total Reward: {}".format(total_reward) + " | Soup Delivered: {}".format(soup_delivered))
+                pbar.set_description("Total Episode {}".format(episodes) + " | Episode {}".format(episode) +  " | Training Reward: {}".format(total_reward) )
 
             pbar.close()
             
@@ -63,7 +64,9 @@ class OvercookedRunner(Runner):
             train_infos = self.train()
 
         
-        ## TODO log information and eval
+            # eval
+            if (episode+1) % self.eval_interval == 0 and self.use_eval:
+                self.eval()
 
 
     def warmup(self):
@@ -103,10 +106,7 @@ class OvercookedRunner(Runner):
         rnn_states_critic = np.array(np.split(_t2n(rnn_states_critic), self.n_rollout_threads))
 
 
-        # TODO: check rearrange action. change the action from int to one-hot
-        actions_env = np.squeeze(np.eye(self.envs.action_space[0].n)[actions], 2)
-
-        return values, actions, action_log_probs, rnn_states, rnn_states_critic, actions_env
+        return values, actions, action_log_probs, rnn_states, rnn_states_critic
 
 
     def insert(self, data):
@@ -129,8 +129,44 @@ class OvercookedRunner(Runner):
         self.buffer.insert(share_obs, obs, rnn_states, rnn_states_critic, actions, action_log_probs, values, rewards, masks)
     
     def eval(self):
-        raise NotImplementedError
-    
+        eval_episode_rewards = []
+        eval_obs = self.eval_envs.reset()
+
+        eval_rnn_states = np.zeros((self.n_eval_rollout_threads, *self.buffer.rnn_states.shape[2:]), dtype=np.float32)
+        eval_masks = np.ones((self.n_eval_rollout_threads, self.num_agents, 1), dtype=np.float32)
+
+        pbar = tqdm(range(self.episode_length))
+        for eval_step in range(self.episode_length):
+            self.trainer.prep_rollout()
+
+            eval_action, eval_rnn_states = self.trainer.policy.act(np.concatenate(eval_obs),
+                                                np.concatenate(eval_rnn_states),
+                                                np.concatenate(eval_masks),
+                                                deterministic=True)
+            
+            eval_actions = np.array(np.split(_t2n(eval_action), self.n_eval_rollout_threads))
+            eval_rnn_states = np.array(np.split(_t2n(eval_rnn_states), self.n_eval_rollout_threads))
+
+            eval_obs, eval_rewards, eval_dones, eval_infos = self.eval_envs.step(eval_actions)
+            eval_episode_rewards.append(eval_rewards)
+            
+
+            eval_rnn_states[eval_dones == True] = np.zeros(((eval_dones == True).sum(), self.recurrent_N, self.hidden_size), dtype=np.float32)
+            eval_masks = np.ones((self.n_eval_rollout_threads, self.num_agents, 1), dtype=np.float32)
+            eval_masks[eval_dones == True] = np.zeros(((eval_dones == True).sum(), 1), dtype=np.float32)
+
+            pbar.update(1)
+            pbar.set_description('evaluating')
+        
+        pbar.close()
+
+
+        eval_episode_rewards = np.array(eval_episode_rewards, dtype=np.float32)
+        eval_average_episode_rewards = np.mean(np.sum(eval_episode_rewards, axis=0)).item()
+        print("eval_average_episode_rewards: ", eval_average_episode_rewards, "successfully delivered soup: ", eval_average_episode_rewards/20.0)
+
+
+
     def render(self):
         raise NotImplementedError
 

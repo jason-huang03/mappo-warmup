@@ -1572,7 +1572,7 @@ class OvercookedGridworld(object):
                 if obj.name == "soup":
                     delivery_rew = self.deliver_soup(new_state, player, obj)
                     sparse_reward[player_idx] += delivery_rew
-
+            
                     # Log soup delivery
                     events_infos["soup_delivery"][player_idx] = True
 
