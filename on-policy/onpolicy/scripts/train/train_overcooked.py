@@ -140,7 +140,9 @@ def main(args):
     parser = get_config()
     all_args = parse_args(args, parser)
 
-    # for simplicity
+
+
+    # to use former code and for simplicity
     all_args.use_wandb = False
 
     if all_args.algorithm_name == "rmappo":
@@ -243,6 +245,16 @@ def main(args):
 
     # if all_args.use_eval:
     #     print("use eval envs")
+
+
+
+    # use my wandb
+
+    wandb.init(
+        config=all_args, 
+        project=all_args.env_name + "-" + all_args.scenario_name,
+        name='jason-huang03'
+    )
 
     config = {
         "all_args": all_args,

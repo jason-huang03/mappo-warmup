@@ -23,7 +23,7 @@ class OvercookedRunner(Runner):
 
         start = time.time()
 
-        num_env_steps = 0
+        self.current_num_env_steps = 0
 
         # determine how many episodes to run
         episodes = (
@@ -67,7 +67,7 @@ class OvercookedRunner(Runner):
                 total_reward.append(rewards)
                 total_success.append(rewards >= 19)
 
-                num_env_steps += self.n_rollout_threads
+                self.current_num_env_steps += self.n_rollout_threads
 
                 self.insert(data)
                 pbar.update(1)
@@ -77,8 +77,12 @@ class OvercookedRunner(Runner):
                     + " | Episode {}".format(episode)
                     + " | Training Reward: {}".format(np.mean(np.sum(total_reward, axis=0)))
                     + " | Training Success: {}".format(np.mean(np.sum(total_success, axis=0)))
-                    + " | env_step: {}".format(num_env_steps)
+                    + " | env_step: {}".format(self.current_num_env_steps)
                 )
+
+                
+                wandb.log({"Train Average Success": np.mean(np.sum(total_success, axis=0))}, step=self.current_num_env_steps)
+
 
             pbar.close()
 
@@ -245,6 +249,7 @@ class OvercookedRunner(Runner):
             "successfully delivered soup: ",
             eval_average_episode_rewards / 20.0,
         )
+        wandb.log({"Evaluatoin Reward": eval_average_episode_rewards}, step=self.current_num_env_steps)
 
     def render(self):
         raise NotImplementedError
