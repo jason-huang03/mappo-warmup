@@ -42,5 +42,5 @@ I have written [a blog about PPO](policy_gradient_and_PPO.pdf) during the course
 
 ## Problem and Discussion
 
-I found that it is extremely inefficient for agent to learn from scratch, as is the case in this project. I may take the agent a long time to discover actions that can yield great rewards. Once the agent found such actions, the learning becomes fast. So I think it may be better to pretrain agents on human behaviour and then do PPO training.
+I found that it is extremely inefficient for agent to learn from scratch, as is the case in this project. It may take the agent a long time to discover actions that can yield great rewards. Once the agent found such actions, the learning becomes fast. So I think it may be better to pretrain agents on human behaviour and then do PPO training.
 
