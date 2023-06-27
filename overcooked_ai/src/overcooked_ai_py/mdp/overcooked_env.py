@@ -104,7 +104,8 @@ class OvercookedEnv(object):
                 self._mp = self.mlam.motion_planner
             else:
                 if self.info_level > 0:
-                    print("Computing MotionPlanner")
+                    # print("Computing MotionPlanner")
+                    pass
                 self._mp = MotionPlanner.from_pickle_or_compute(
                     self.mdp,
                     self.mlam_params["counter_goals"],
@@ -862,7 +863,7 @@ class Overcooked(gym.Env):
         dummy_mdp = self.base_env.mdp
         dummy_state = dummy_mdp.get_standard_start_state()
         obs_shape = self.featurize_fn(dummy_state)[0].shape
-        share_obs_shape = tuple(value * 2 for value in obs_shape)
+        share_obs_shape = tuple(value * 2 if index == 0 else value for index, value in enumerate(obs_shape))
         
         high = np.ones(share_obs_shape) * float("inf")
         low = np.zeros(share_obs_shape)

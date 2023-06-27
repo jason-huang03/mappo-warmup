@@ -41,6 +41,7 @@ class SharedReplayBuffer(object):
 
         if type(share_obs_shape[-1]) == list:
             share_obs_shape = share_obs_shape[:1]
+      
 
         self.share_obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, num_agents, *share_obs_shape),
                                   dtype=np.float32)

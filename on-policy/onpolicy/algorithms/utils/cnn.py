@@ -36,9 +36,37 @@ class CNNLayer(nn.Module):
                   ),
             active_func,
             init_(nn.Linear(hidden_size, hidden_size)), active_func)
+        
+        # self.cnn = nn.Sequential(
+        #     init_(nn.Conv2d(in_channels=input_channel,
+        #                     out_channels=25,
+        #                     kernel_size=5,
+        #                     stride=stride,
+        #                     padding=2)
+        #           ),
+        #     active_func,
+        #     init_(nn.Conv2d(in_channels=25,
+        #                     out_channels=25,
+        #                     kernel_size=3,
+        #                     stride=stride,
+        #                     padding=1)
+        #           ),
+        #     active_func,
+        #     init_(nn.Conv2d(in_channels=25,
+        #                     out_channels=25,
+        #                     kernel_size=3,
+        #                     stride=stride,
+        #                     padding=1)
+        #           ),
+        #     active_func,
+        #     nn.Flatten(),
+
+        #     nn.LazyLinear(hidden_size), active_func)
+
 
     def forward(self, x):
         x = x / 255.0
+
         x = self.cnn(x)
         return x
 

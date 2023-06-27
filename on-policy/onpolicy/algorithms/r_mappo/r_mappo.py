@@ -24,6 +24,7 @@ class R_MAPPO():
         self.clip_param = args.clip_param
         self.ppo_epoch = args.ppo_epoch
         self.num_mini_batch = args.num_mini_batch
+        self.mini_batch_size = args.mini_batch_size
         self.data_chunk_length = args.data_chunk_length
         self.value_loss_coef = args.value_loss_coef
         self.entropy_coef = args.entropy_coef
@@ -197,7 +198,7 @@ class R_MAPPO():
             elif self._use_naive_recurrent:
                 data_generator = buffer.naive_recurrent_generator(advantages, self.num_mini_batch)
             else:
-                data_generator = buffer.feed_forward_generator(advantages, self.num_mini_batch)
+                data_generator = buffer.feed_forward_generator(advantages, self.num_mini_batch, mini_batch_size=self.mini_batch_size)
 
             for sample in data_generator:
 

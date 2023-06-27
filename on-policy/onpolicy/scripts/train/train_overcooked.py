@@ -35,16 +35,23 @@ def make_train_env(all_args):
                 shaped_reward_horizon = (
                     all_args.num_reward_shaping_steps / all_args.n_rollout_threads
                 )
-            
+
             else:
                 shaped_reward_horizon = 400 * 100
 
             scenario_name = all_args.scenario_name
             mdp = OvercookedGridworld.from_layout_name(scenario_name)
             base_env = OvercookedEnv.from_mdp(mdp, horizon=all_args.horizon)
+            
+            featurize_fn = (
+                base_env.lossless_state_encoding_mdp
+                if all_args.use_lossless_encoding
+                else base_env.featurize_state_mdp
+            )
+
             gym_env = Overcooked(
                 base_env=base_env,
-                featurize_fn=base_env.featurize_state_mdp,
+                featurize_fn=featurize_fn,
                 seed=all_args.seed + rank * 1000,
                 use_sparse_reward=all_args.use_sparse_reward,
                 shaped_reward_horizon=shaped_reward_horizon,
@@ -66,9 +73,15 @@ def make_eval_env(all_args):
             scenario_name = all_args.scenario_name
             mdp = OvercookedGridworld.from_layout_name(scenario_name)
             base_env = OvercookedEnv.from_mdp(mdp, horizon=all_args.horizon)
+            featurize_fn = (
+                base_env.lossless_state_encoding_mdp
+                if all_args.use_lossless_encoding
+                else base_env.featurize_state_mdp
+            )
+
             gym_env = Overcooked(
                 base_env=base_env,
-                featurize_fn=base_env.featurize_state_mdp,
+                featurize_fn=featurize_fn,
                 seed=all_args.seed + rank * 1000,
                 use_sparse_reward=True,
             )
@@ -110,6 +123,14 @@ def parse_args(args, parser):
         default=0,
         help="number of reward shaping steps",
     )
+
+    parser.add_argument(
+        "--use_lossless_encoding",
+        action="store_true",
+        default=False,
+        help="use lossless state encoding",
+    )
+
     all_args = parser.parse_known_args(args)[0]
 
     return all_args

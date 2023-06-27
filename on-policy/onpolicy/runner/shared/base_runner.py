@@ -80,7 +80,7 @@ class Runner(object):
 
         # algorithm
         self.trainer = TrainAlgo(self.all_args, self.policy, device = self.device)
-        
+
         # buffer
         self.buffer = SharedReplayBuffer(self.all_args,
                                         self.num_agents,

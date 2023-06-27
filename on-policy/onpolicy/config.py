@@ -238,6 +238,9 @@ def get_config():
                         help='ppo clip parameter (default: 0.2)')
     parser.add_argument("--num_mini_batch", type=int, default=1,
                         help='number of batches for ppo (default: 1)')
+    parser.add_argument("--mini_batch_size", type=int, default=None,
+                        help='number of batches for ppo (default: None)')
+    
     parser.add_argument("--entropy_coef", type=float, default=0.01,
                         help='entropy term coefficient (default: 0.01)')
     parser.add_argument("--value_loss_coef", type=float,
