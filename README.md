@@ -35,7 +35,7 @@ I have written [a blog about PPO](policy_gradient_and_PPO.pdf) during the course
 + `entropy_coef`: weight for entropy bonus in the loss function that encourages exploration.
 + `gamma`: ordinary discount factor for reward in the markov decision problem. 
 + `value_loss_coef`: weight for value function error in the loss function.
-+ `gae_lambda`: $\lambda$ in generalized advantage estimation, which is used to estimate the advantage function. $\lamda$ is a trade-off between using value function and using monte carlo estimation.
++ `gae_lambda`: $\lambda$ in generalized advantage estimation, which is used to estimate the advantage function. $\lambda$ is a trade-off between using value function and using monte carlo estimation.
 + `huber_delta`: the parameter $\delta$ in huber loss, which makes training less sensitive to outliers in data than squared error loss.
 
 
